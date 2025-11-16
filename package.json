@@ -34,7 +34,16 @@
   "signale": {
     "displayFilename": true,
     "displayTimestamp": true,
-    "displayDate": true
+    "displayDate": true, 
+    "displayScope": true,
+    "displayBadge": true,
+    "displayLabel": true,
+    "underlineLabel": false,
+    "underlineMessage": false,
+    "underlinePrefix": false,
+    "underlineSuffix": false,
+    "uppercaseLabel": false
+
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

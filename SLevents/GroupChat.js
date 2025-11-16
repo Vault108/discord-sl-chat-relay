@@ -1,7 +1,7 @@
 const config = require('../config.js');
 const axios = require('axios').default;
 const nmv = require('@caspertech/node-metaverse');
-const logger = require('./modules/Logger.js');
+const logger = require('../modules/Logger.js');
 const { UUID } = nmv;
 
 module.exports = async (client, GroupChatEvent) => {
