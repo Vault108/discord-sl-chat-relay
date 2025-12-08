@@ -1,6 +1,6 @@
 const fs = require('fs');
 const { prompt } = require('enquirer');
-const logger = require('./modules/Logger.js');
+const logger = require('../modules/Logger.js');
 
 const questions = [
     {

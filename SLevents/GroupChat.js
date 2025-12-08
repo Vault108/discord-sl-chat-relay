@@ -1,4 +1,3 @@
-
 const config = require('../config.js');
 const axios = require('axios').default;
 const nmv = require('@caspertech/node-metaverse');
@@ -20,6 +19,34 @@ async function fetchGroupName(groupUUID) {
     return 'Unknown Group';
   }
 }
+
+// Decode and log group UUIDs from config.js
+(async () => {
+  for (const [groupUUID] of config.relays) {
+    try {
+      const groupName = await fetchGroupName(groupUUID);
+      logger.info(`Relaying Messages From: ${groupName} to Discord Channel ID: ${config.relays.get(groupUUID)}`); 
+    } catch (error) {
+      logger.error(`Failed to decode group UUID: ${groupUUID}`, error);
+    }
+  }
+})();
+
+// Decode and log Discord channel IDs to names
+(async () => {
+  for (const [groupUUID, channelID] of config.relays) {
+    try {
+      const channel = client.channels.cache.get(channelID);
+      if (channel) {
+        logger.info(`Channel ID: ${channelID}, Channel Name: ${channel.name}`);
+      } else {
+        logger.warn(`Channel ID: ${channelID} not found in cache.`);
+      }
+    } catch (error) {
+      logger.error(`Failed to decode channel ID: ${channelID}`, error);
+    }
+  }
+})();
 
 module.exports = async (client, GroupChatEvent) => {
   const SLbot = client.container.SLbot;

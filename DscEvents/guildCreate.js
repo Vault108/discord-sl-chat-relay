@@ -9,8 +9,8 @@ module.exports = (client, guild) => {
 
   // We'll use set but please keep in mind that `set` is overkill for a singular command.
   // Set the guild commands like 
-  client.guilds.cache.get(guild.id)?.commands.set(guildCmds.map(c => c.commandData));
+  client.guilds.cache.get(guild.id)?.commands.set(guildCmds.map(c => c.data));
 
-  // Then set the global commands like 
-client.application?.commands.set(globalCmds.map(c => c.commandData)).catch(e => console.log(e));
+  // Then set the global commands using 'data'
+  client.application?.commands.set(globalCmds.map(c => c.data)).catch(e => console.log(e));
 };
