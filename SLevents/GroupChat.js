@@ -1,17 +1,40 @@
+
 const config = require('../config.js');
 const axios = require('axios').default;
 const nmv = require('@caspertech/node-metaverse');
 const logger = require('../modules/Logger.js');
+const getGroupNameFromUUID = require('./getGroupName');
 const { UUID } = nmv;
+const usegroupname = process.env.USE_GROUP_NAME === 'true';
+const useprofilepicture = process.env.USE_PROFILE_PICTURE === 'true';
+
+logger.info(usegroupname ? 'Not posting message with Group name.' : 'Posting message with Group name.');
+logger.info(useprofilepicture ? 'Not posting message with Profile picture.' : 'Posting message with Profile picture.');
+
+async function fetchGroupName(groupUUID) {
+  try {
+    const groupName = await getGroupNameFromUUID(groupUUID);
+    return groupName;
+  } catch (error) {
+    logger.error(`Failed to fetch group name for UUID ${groupUUID}:`, error);
+    return 'Unknown Group';
+  }
+}
 
 module.exports = async (client, GroupChatEvent) => {
   const SLbot = client.container.SLbot;
-
   const currentBot = `${process.env.SL_FIRSTNAME} ${process.env.SL_LASTNAME}`;
   if (GroupChatEvent.fromName === currentBot) return;
-  if (config.ignoredSet?.has(GroupChatEvent.from.toString()) || config.ignored.includes(GroupChatEvent.from.toString())) return;
+  if (
+    config.ignoredSet?.has(GroupChatEvent.from.toString()) ||
+    config.ignored.includes(GroupChatEvent.from.toString())
+  )
+    return;
 
   let img = 'bfc51542-be49-4595-9784-aec1e3f612dc';
+  let avatarURL = useprofilepicture
+    ? `https://picture-service.secondlife.com/${img}/320x240.jpg`
+    : undefined;
 
   if (config.relays.has(GroupChatEvent.groupID.toString())) {
     try {
@@ -21,39 +44,47 @@ module.exports = async (client, GroupChatEvent) => {
       }
 
       try {
-        // TODO: Need to make this a Regex of some sort I think
-        const profile = await axios.get(`http://world.secondlife.com/resident/${GroupChatEvent.from}`);
-        const match = profile.data.match(/<meta name="imageid" content="([^"]+)"/);
+        // TODO: Make this a Regex
+        const profile = await axios.get(
+          `http://world.secondlife.com/resident/${GroupChatEvent.from}`
+        );
+        const match = profile.data.match(
+          /<meta name="imageid" content="([^"]+)"/
+        );
         if (match) img = match[1];
       } catch (error) {
-        logger.error("Failed fetching profile image:", error.message);
+        console.error('Failed fetching profile image:', error.message);
       }
 
-      const channel = client.channels.cache.get(config.relays.get(GroupChatEvent.groupID.toString()));
+      const channel = client.channels.cache.get(
+        config.relays.get(GroupChatEvent.groupID.toString())
+      );
       if (!channel) return;
-      // Get all the webhooks for the channel, then get the first token available, we don't care who made it, it's gonna be ours now :)
       let webhooks = await channel.fetchWebhooks();
-      let webhook = webhooks.find(wh => wh.token);
-      // If there is no webhook, create one, use a default image for it. 
+      let webhook = webhooks.find((wh) => wh.token);
       if (!webhook) {
         webhook = await channel.createWebhook({
           name: 'relay-bot',
           avatar: 'https://i.imgur.com/AfFp7pu.png',
         });
-        logger.info(`Created webhook`);
+        console.log('Created webhook'); // do not log webhook url
       }
-      // Attempt to send the message that came from inworld  via the webhoo, and if there is a image, guess we can use a profile image.
-      // TODO: Create configuration settings maybe for if it's a OpenSimulator Bot, it'll default to something, since obviously the SL Image Service wouldn't be available.
+
+      // Fetch group name using the helper function if enabled
+      let groupName = '';
+      if (usegroupname) {
+        groupName = await fetchGroupName(GroupChatEvent.groupID);
+        logger.info('Decoded Group Name:', groupName);
+      }
+
       await webhook.send({
         content: message,
         username: `${GroupChatEvent.fromName} (inworld)`,
         avatarURL: `https://picture-service.secondlife.com/${img}/320x240.jpg`,
         allowedMentions: { parse: [] },
       });
-
     } catch (error) {
-      // Note the error, and dump.
-      logger.error('Failed to relay to Discord:', error.message);
+      console.error('Failed to relay to Discord:', error.message);
     }
   }
 };
