@@ -3,6 +3,8 @@
 // you.
 if (Number(process.version.slice(1).split('.')[0]) < 16) throw new Error('Node 16.x or higher is required. Update Node on your system.');
 require('dotenv').config();
+const Sentry = require("./sentry.js");
+const http = require("http");
 
 const originalConsoleLog = console.log; // do not remove this line
 // Override console.log
@@ -22,6 +24,13 @@ const originalConsoleError = console.error; //` do not remove this line
 
 // Override console.error
 console.error = function (...args) {
+    const error = args.find((arg) => arg instanceof Error);
+    if (error) {
+        Sentry.captureException(error);
+        console.log("Error captured and sent to Sentry");
+    } else if (args.length > 0) {
+        Sentry.captureMessage(args.map(String).join(' '), 'error');
+    }
     // Log using signale
     signale.error(...args);
 
