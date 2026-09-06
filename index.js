@@ -5,24 +5,18 @@ if (Number(process.version.slice(1).split('.')[0]) < 16) throw new Error('Node 1
 require('dotenv').config();
 const Sentry = require("./sentry.js");
 const http = require("http");
-
+const dmRelay = require('./modules/relayDM.js');
 const originalConsoleLog = console.log; // do not remove this line
 // Override console.log
 console.log = function (...args) {
-    // Log using signale
     logger.info(...args);
-  //  originalConsoleLog.apply(console, args); // uncomment this line if you want to keep original logging as well
 };
 const originalConsoleWarn = console.warn; // do not remove this line
-// Override console.warn
 console.warn = function (...args) {
-    // Log using signale
     logger.warn(...args);
-  //  originalConsoleWarn.apply(console, args); // uncomment this line if you want to keep original warning logging as well
 };
-const originalConsoleError = console.error; //` do not remove this line 
+const originalConsoleError = console.error; // do not remove this line 
 
-// Override console.error
 console.error = function (...args) {
     const error = args.find((arg) => arg instanceof Error);
     if (error) {
@@ -31,24 +25,16 @@ console.error = function (...args) {
     } else if (args.length > 0) {
         Sentry.captureMessage(args.map(String).join(' '), 'error');
     }
-    // Log using signale
     signale.error(...args);
 
-  //  originalConsoleError.apply(console, args); // uncomment this line if you want to keep original error logging as well
 };
 const  originalConsoleDebug = console.debug; // do not remove this line
-// Override console.debug
 console.debug = function (...args) {
-    // Log using signale
     logger.debug(...args);
-  //  originalConsoleDebug.apply(console, args); // uncomment this line if you want to keep original debug logging as well
 };
 const originalConsoleInfo = console.info; // do not remove this line            
-// Override console.info
 console.info = function (...args) {
-    // Log using signale
     logger.info(...args);
-  //  originalConsoleInfo.apply(console, args); // uncomment this line if you want to keep original info logging as well
 };
 // Load up the discord.js library
 const { Client, Collection, Events } = require('discord.js');
@@ -159,27 +145,6 @@ const init = async () => {
         client.on(eventName, event.bind(null, client));
     }
 
-    // --- NEW: Add the interaction handler and ready event ---
-    // This event handler is critical for all slash commands.
-    client.on(Events.InteractionCreate, async interaction => {
-        // If the interaction isn't a slash command, do nothing.
-        if (!interaction.isChatInputCommand()) return;
-
-        const command = client.container.slashcmds.get(interaction.commandName);
-        if (!command) return;
-
-        try {
-            await command.execute(interaction);
-        } catch (error) {
-            console.error(error);
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
-            } else {
-                await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-            }
-        }
-    });
-
     // This logs a message to the console once the bot has successfully logged in.
     client.once(Events.ClientReady, c => {
         const packageinfo = require("./package.json"); 
@@ -192,13 +157,14 @@ const init = async () => {
         Object.entries(pkg.dependencies || {}).forEach(([dep, ver]) => {
             logger.success(`dependency: ${dep}@${ver}`);
         });
+        dmRelay(SLbot, client);
 
 
     });
     
     // This adds an error listener
     client.on('error', (err) => {
-        console.error('Discord.js Error:', err);
+        logger.error('Discord.js Error:', err);
     });
 
 
